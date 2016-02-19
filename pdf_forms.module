@@ -1,0 +1,285 @@
+<?php
+
+/**
+* Implements hook_permission.
+*/
+function pdf_forms_permission(){
+  return array(
+    'admin pdf_forms' => array(
+      'label' => t('Administer PDF Forms'),
+      'restrict access' => TRUE,
+    ),
+    'manage pdf_forms' => array(
+      'title' => t('Manage PDF Forms')
+    ),
+    'create submission' => array(
+      'title' => t('Create new PDF Form Submission')
+    ),
+    'view any submission' => array(
+      'title' => t('View Any PDF Form Submission')
+    ),
+    'view own submission' => array(
+      'title' => t('View Own PDF Form Submission')
+    ),
+    'edit any submission' => array(
+      'title' => t('Edit Any PDF Form Submission')
+    ),
+    'edit own submission' => array(
+      'title' => t('Edit own PDF Form Submission')
+    ),
+    'delete any submission' => array(
+      'title' => t('Delete Any PDF Form Submission')
+    ),
+    'delete own submission' => array(
+      'title' => t('Delete Own PDF Form Submission')
+    ),
+
+  );
+}
+
+/**
+* Implements hook_menu
+*/
+function pdf_forms_menu() {
+
+  $items['admin/config/media/pdf_forms'] = array(
+    'title' => t('PDF Forms'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pdf_forms_admin_settings'),
+    'access arguments' => array('admin pdf_forms'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/pdf_forms.pages.inc'
+  );
+
+  $items['admin/content/pdf_forms'] = array(
+    'title' => t('PDF Forms'),
+    'page callback' => 'pdf_form_type_admin_overview',
+    'access arguments' => array('manage pdf_forms'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/pdf_forms.pages.inc'
+  );
+
+  $items['admin/content/pdf_forms/list'] = array(
+    'title' => t('PDF Forms'),
+    'page callback' => 'pdf_form_type_admin_overview',
+    'access arguments' => array('manage pdf_forms'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file' => 'includes/pdf_forms.pages.inc'
+  );
+
+  $types = pdf_forms_types();
+
+  foreach($types as $type) {
+    $items['admin/content/pdf_forms/' . $type] = array(
+      'title callback' => 'pdf_forms_type_title',
+      'title arguments' => array(1),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('pdf_forms_type_edit', 3),
+      'access arguments' => array('manage pdf_forms'),
+      'file' => 'includes/pdf_forms.entity.inc',
+      'type' => MENU_NORMAL_ITEM
+    );
+
+    $items['admin/content/pdf_forms/' . $type . '/edit'] = array(
+      'title' => t('Edit'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('pdf_forms_type_edit', 3),
+      'access arguments' => array('manage pdf_forms'),
+      'weight' => -50,
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+      'file' => 'includes/pdf_forms.entity.inc'
+    );
+  }
+
+
+  $items['admin/content/pdf_forms/create'] = array(
+    'title' => t('Create PDF Form'),
+    'page callback' => 'pdf_forms_type_create',
+    'access arguments' => array('manage pdf_forms'),
+    'type' => MENU_LOCAL_ACTION,
+    'file' => 'includes/pdf_forms.entity.inc'
+  );
+
+  $items['admin/content/form_submissions'] = array(
+    'title' => t('PDF Form Submissions'),
+    'page callback' => array('pdf_forms_submissions_overview'),
+    'access arguments' => array('access content overview'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/pdf_forms.pages.inc'
+  );
+
+  /* Submission Form */
+  $items['pdf_form/%'] = array(
+    'title callback' => 'pdf_forms_type_title',
+    'title arguments' => array(1),
+    'page callback' => 'pdf_forms_create',
+    'page arguments' => array(1),
+    'access callback' => 'pdf_forms_type_access',
+    'access arguments' => array('create', 1),
+    'file' => 'includes/pdf_forms.entity.inc'
+  );
+
+  $items['pdf_form/%/submissions'] = array(
+    'title' => t('Submissions'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pdf_forms_type_submissions_overview', 1),
+    'access callback' => 'pdf_forms_type_access',
+    'access arguments' => array('view', 1),
+    'file' => 'includes/pdf_forms.entity.inc'
+  );
+
+  /* Submission Link */
+  $items['pdf_form_submission/%pdf_form'] = array(
+    'title callback' => 'pdf_forms_title',
+    'title arguments' => array(1),
+    'page callback' => 'pdf_forms_view',
+    'page arguments' => array(1),
+    'access callback' => 'pdf_forms_access',
+    'access arguments' => array('view', 1),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/pdf_forms.entity.inc'
+  );
+
+  $items['pdf_form_submission/%pdf_form/view'] = array(
+    'title' => t('View'),
+    'page callback' => 'pdf_forms_view',
+    'page arguments' => array(1),
+    'access callback' => 'pdf_forms_access',
+    'access arguments' => array('view', 1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -50,
+    'file' => 'includes/pdf_forms.entity.inc'
+  );
+
+  $items['pdf_form_submission/%pdf_form/edit'] = array(
+    'title' => t('Edit'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pdf_forms_edit',1),
+    'access callback' => 'pdf_forms_access',
+    'access arguments' => array('edit', 1),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/pdf_forms.entity.inc'
+  );
+
+  $items['pdf_form_submission/%pdf_forms/delete'] = array(
+    'title' => t('Delete'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pdf_forms_delete', 1),
+    'access callback' => 'pdf_forms_access',
+    'access arguments' => array('delete', 1),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/pdf_forms.entity.inc'
+  );
+
+  return $items;
+}
+
+/**
+* Return an array of types
+*/
+function pdf_forms_types() {
+  $types = array();
+  $results = db_query('SELECT bundle FROM {pdf_forms_type}');
+  foreach($results as $row) {
+    $types[] = $row->bundle;
+  }
+  return $types;
+}
+
+/**
+* Implements hook_entity_info
+*/
+function pdf_forms_entity_info() {
+  $info['pdf_form'] = array(
+    'label' => t('PDF Form'),
+    'controller class' => 'PDFFormsController',
+    'base table' => 'pdf_forms_data',
+    'uri callback' => 'pdf_forms_uri',
+    'fieldable' => TRUE,
+    'entity keys' => array(
+      'id' => 'submission_id',
+      'bundle' => 'bundle'
+    ),
+    'bundle keys' => array(
+      'bundle' => 'bundle'
+    ),
+    'static cache' => TRUE,
+    'bundles' => _pdf_forms_get_bundles(),
+    'view modes' => array(
+      'full' => array(
+        'label' => t('Full'),
+        'custom settings' => FALSE,
+      ),
+    ),
+  );
+
+  return $info;
+}
+
+function _pdf_forms_get_bundles() {
+  $bundles = array();
+
+  $query = db_select('pdf_forms_type', 'type');
+  $query->fields('type', array('bundle', 'label'));
+  $results = $query->execute();
+
+  foreach($results as $row) {
+    $bundles[$row->bundle] = array(
+      'label' => $row->label,
+      'admin' => array(
+        'path' => "admin/content/pdf_forms/{$row->bundle}",
+        'access arguments' => array('manage pdf_forms')
+      )
+    );
+  }
+
+  return $bundles;
+}
+
+/**
+* Access callback function for pdf_forms
+*/
+function pdf_forms_type_access ($op = 'view', $entity = NULL, $account = NULL) {
+  global $user;
+  $account = ($account == NULL) ? $user : $account;
+
+  switch($op) {
+    case 'view':
+      return ( user_access('view any submission', $account) || ($user->uid == $entity->uid && user_access('view own submission', $entity)));
+    break;
+    case 'create':
+      return user_access('create submission', $account);
+    break;
+    case 'edit':
+      return ( user_access('edit any submission', $account) || ($user->uid == $entity->uid && user_access('edit own submission', $entity)));
+    break;
+    case 'delete':
+      return ( user_access('delete any submission', $account) || ($user->uid == $entity->uid && user_access('delete own submission', $entity)));
+    break;
+  }
+
+  return FALSE;
+}
+
+function pdf_forms_access ($op = 'view', $entity = NULL, $account = NULL) {
+
+  return true;
+}
+
+/**
+* Load entity
+*/
+function pdf_form_load($submission_id =NULL, $reset = FALSE) {
+  $submission_ids = ( isset($submission_id) ? array($submission_id) : array() );
+  $pdf_form = pdf_form_load_multiple($submission_ids, array(), $reset);
+  return $pdf_form ? reset($pdf_form) : FALSE;
+}
+
+/**
+* Load Multiple entities.
+*/
+function pdf_form_load_multiple($submission_ids = FALSE, $conditions = array(), $reset = FALSE) {
+  return entity_load('pdf_form', $submission_ids, $conditions, $reset);
+}
+
+include_once drupal_get_path('module', 'pdf_forms') . '/includes/pdf_forms.rules.inc';

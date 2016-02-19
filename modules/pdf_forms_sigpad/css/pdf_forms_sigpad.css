@@ -1,0 +1,90 @@
+#PDFFormSigPadFields .left {
+  float:left;
+  width:65%;
+  position: relative;
+}
+
+#PDFFormSigPadFields .left .canvas {
+  background:url('./images/canvas.png');
+  border: 1px solid #000;
+  box-shadow: 2px 2px 2px #ccc;
+  min-height: 800px;
+}
+
+#PDFFormSigPadFields .left .canvas .inner {
+  position: relative;
+}
+
+#PDFFormSigPadFields .left .canvas sig-field {
+  position: absolute;
+  z-index: 1;
+  background:#333;
+  border:1px solid #000;
+  display: block;
+  color:#fff;
+  text-align: center;
+}
+
+#PDFFormSigPadFields .right {
+  float:right;
+  width:30%;
+}
+
+sig-pad-controls {
+  position: absolute;
+  top:10px;
+  left:10px;
+  z-index: 999999999;
+  font-size: 28px;
+  font-weight:bolx;
+}
+
+sig-pad-controls i {
+  cursor:pointer;
+}
+
+#actions {
+  width: 100%;
+  padding:0px;
+}
+
+#actions .btn {
+  width: 40%;
+  height: 30px;
+  float: left;
+  margin: 5px;
+  display: inline-block;
+}
+
+#addField {
+  width: 100%;
+  height: 30px;
+  margin: 10px auto;
+}
+
+#controllPaletteForm {
+  width:97.5%;
+  box-shadow: 2px 2px 2px #ccc;
+  border: 1px solid #000;
+}
+
+.fieldList {
+  list-style: none;
+  width:100%;
+  clear:both;
+}
+
+.fieldList li.active {
+  font-weight:bold;
+}
+
+.fieldList li {
+  float: left;
+  width:100%;
+  cursor:pointer;
+  list-style: none;
+  box-shadow: 1px 1px 1px #ccc;
+  margin: 5px 0px;
+  position: relative;
+  left: -10px;
+}

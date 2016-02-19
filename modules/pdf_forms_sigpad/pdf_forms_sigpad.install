@@ -1,0 +1,43 @@
+<?php
+
+/**
+* Implements hook_schema
+*/
+function pdf_forms_sigpad_schema() {
+  $schema['pdf_forms_sigpad_data'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial'
+      ),
+      'bundle' => array(
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'page' => array(
+        'type' => 'int'
+      ),
+      'label' => array(
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'top' => array(
+        'type' => 'int'
+      ),
+      'left' => array(
+        'type' => 'int'
+      ),
+      'width' => array(
+        'type' => 'int'
+      ),
+      'height' => array(
+        'type' => 'int'
+      ),
+      'value' => array(
+        'type' => 'text'
+      )
+    ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}

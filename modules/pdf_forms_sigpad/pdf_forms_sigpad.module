@@ -1,0 +1,251 @@
+<?php
+// pdftk my.pdf dump_data | grep NumberOfPages
+
+/**
+* Implements hook_menu
+*/
+function pdf_forms_sigpad_menu() {
+  $items['admin/config/media/pdf_forms/sigpad'] = array(
+    'type' => MENU_LOCAL_ACTION,
+    'title' => t('Sigpad Settings'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pdf_forms_sigpad_settings'),
+    'access arguments' => array('admin pdf_forms_sigpad'),
+    'file' => 'includes/pdf_forms_sigpad.admin_pages.inc'
+  );
+
+  $types = pdf_forms_types();
+
+  foreach($types as $type) {
+    $items['admin/content/pdf_forms/' . $type . '/sigpad'] = array(
+      'title' => 'Signature Settings',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('pdf_forms_type_sigpad', 3),
+      'access arguments' => array('manage pdf_forms'),
+      'type' => MENU_LOCAL_TASK
+    );
+
+    $items['admin/content/pdf_forms/' . $type . '/sigpad/%'] = array(
+      'title callback' => 'Signature Settings',
+      'page callback' => 'pdf_forms_sigpad_page',
+      'page arguments' => array($type, 5),
+      'access arguments' => array('manage pdf_forms'),
+      'type' => MENU_NORMAL_ITEM
+    );
+
+  }
+
+  /**
+  * Callbacks used for our tool.
+  */
+  $items['js/pdf_forms_sigpad/fields/%/%'] = array(
+    'page callback' => 'pdf_forms_sigpad_fields_json',
+    'page arguments' => array(3, 4),
+    'access arguments' => array('manage pdf_forms'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/pdf_forms_sigpad.callback.inc',
+  );
+
+  $items['js/pdf_forms_sigpad/fields/save'] = array(
+    'page callback' => 'pdf_forms_sigpad_fields_save_json',
+    'access arguments' => array('manage pdf_forms'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/pdf_forms_sigpad.callback.inc'
+  );
+
+  return $items;
+}
+
+/**
+* Implements hook_permission
+*/
+function pdf_forms_sigpad_permission() {
+  return array(
+    'admin pdf_forms_sigpad' => array(
+      'title' => t('Administor PDF Forms Sigpad')
+    )
+  );
+}
+
+/**
+* Implements hook_theme
+*/
+function pdf_forms_sigpad_theme($existing, $type, $theme, $path) {
+  return array(
+    'pdf_forms_sigpad_tool' => array(
+      'variables' => array(
+        'type' => NULL,
+        'page_image' => NULL,
+      ),
+      'template' => 'pdf_forms_sigpad_tool',
+      'path' => $path .'/templates'
+    ),
+  );
+}
+
+
+/**
+* Manage Defined signature fields
+*/
+function pdf_forms_type_sigpad($form, &$form_state, $type) {
+
+  // Get all of the defined signature fields
+  $results = db_query('SELECT * FROM {pdf_forms_sigpad_data} WHERE bundle = :bundle', array(':bundle' => $type));
+
+
+  // Link to specific pages
+  $form['fields'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Field Mapping'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#tree' => TRUE,
+  );
+  $form['fields']['table'] = array(
+    '#tree' => TRUE,
+    '#theme' => 'table',
+    '#header' => array(
+      t('Field Name'), t('Page'), t('Top'), t('Left'), t('Width'), t('Height'), t('Value')
+    ),
+    '#rows' => array(),
+    '#empty' => t('Currently you have no fields defined, click below on a page to start defining signature fields.')
+  );
+  foreach ($results as $row) {
+
+    $name = array(
+      '#type' => 'markup',
+      '#markup' => $row->label
+    );
+
+    $page = array(
+      '#type' => 'markup',
+      '#markup' => $row->page
+    );
+
+    $top = array(
+      '#type' => 'markup',
+      '#markup' => $row->top,
+    );
+
+    $left = array(
+      '#type' => 'markup',
+      '#markup' => $row->left
+    );
+
+    $width = array(
+      '#type' => 'markup',
+      '#markup' => $row->width,
+    );
+
+    $height = array(
+      '#type' => 'markup',
+      '#markup' => $row->height
+    );
+
+    $value = array(
+      '#type' => 'textfield',
+      '#default_value' => $row->value,
+    );
+
+    $form['fields']['table'][$row->id] = array(
+      'name' => &$name,
+      'page' => &$page,
+      'top' => &$top,
+      'left' => &$left,
+      'width' => &$width,
+      'height' => &$height,
+      'value' => &$value
+    );
+
+    $form['fields']['table']['#rows'][] = array(
+      array('data' => &$name),
+      array('data' => &$page),
+      array('data' => &$top),
+      array('data' => &$left),
+      array('data' => &$width),
+      array('data' => &$height),
+      array('data' => &$value)
+    );
+
+    unset($name);
+    unset($page);
+    unset($top);
+    unset($left);
+    unset($width);
+    unset($height);
+    unset($value);
+  }
+
+  $token_types = array('pdf_form');
+  $form['fields']['token_tree'] = array(
+    '#theme' => 'token_tree',
+    '#token_types' => $token_types,
+  );
+
+  $fid = db_query('SELECT fid FROM {pdf_forms_type} WHERE bundle = :bundle', array(':bundle' => $type))->fetchField();
+  // Load the PDF Form template.
+
+  $file = file_load($fid);
+
+    $command = "pdftk " . drupal_realpath($file->uri) . " dump_data | grep NumberOfPages";
+    ob_start();
+    passthru($command);
+    $response = ob_get_clean();
+    $data = explode(':', $response);
+    $page_count = intval(trim($data[1]));
+    $form['pages'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Page Manager'),
+    );
+
+    for($x = 0; $x < $page_count; $x++) {
+      $form['pages'][$x] = array(
+        '#type' => 'markup',
+        '#markup' => l($x+1, 'admin/content/pdf_forms/' . $type . '/sigpad/' . $x)
+      );
+    }
+
+
+  return $form;
+}
+
+function pdf_forms_type_sigpad_validate($form, &$form_state) {
+
+}
+
+function pdf_forms_type_sigpad_submit($form, &$form_state) {
+
+}
+
+/**
+* Page manager tool for PDF Forms Sigpad.
+*/
+function pdf_forms_sigpad_page($type, $page) {
+
+  $path = drupal_get_path('module', 'pdf_forms_sigpad');
+  $bower = $path . '/js/bower_components';
+  $app = $path . '/js/app';
+
+  drupal_add_js($bower . '/angular/angular.min.js', 'file');
+  drupal_add_js($bower . '/angular-sanitize/angular-sanitize.min.js', 'file');
+  drupal_add_library('system', 'ui.draggable');
+  drupal_add_library('system', 'ui.resizable');
+
+  drupal_add_js($app . '/pdfSigPadFields.module.js', 'file');
+
+
+  drupal_add_js($app . '/controllers/MainCtrl.controller.js', 'file');
+  drupal_add_css($path . '/css/pdf_forms_sigpad.css', 'file');
+
+  $output = '';
+  $fid = db_query('SELECT fid FROM {pdf_forms_type} WHERE bundle = :bundle', array(':bundle' => $type))->fetchField();
+  // Load the PDF Form template.
+  $file = file_load($fid);
+  $path = drupal_realpath($file->uri);
+  exec("convert {$path}[{$page}] {$path}_{$page}.jpg");
+  $uri = "{$file->uri}_{$page}.jpg";
+  $url = file_create_url($uri);
+
+  $output = theme('pdf_forms_sigpad_tool', array('type' => $type, 'page' => $page, 'image' => $url));
+  return $output;
+}

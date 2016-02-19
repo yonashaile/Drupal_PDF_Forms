@@ -1,0 +1,19 @@
+name = PDF Forms
+description = Allows handling for PDF Forms and Generating completed PDF Forms.
+
+core = 7.x
+dependencies[] = file
+dependencies[] = libraries (>=2.x)
+dependencies[] = pdf
+dependencies[] = entity
+dependencies[] = file_entity
+dependencies[] = entityform
+dependencies[] = token
+
+files[] = includes/PDFFormsController.inc
+files[] = includes/pdf_forms.pages.inc
+files[] = includes/pdf_forms.pdftk.inc
+files[] = includes/pdf_forms.entity.inc
+files[] = includes/pdf_forms.rules.inc
+
+configure = admin/config/media/pdf_forms

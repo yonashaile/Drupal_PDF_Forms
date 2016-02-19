@@ -1,0 +1,171 @@
+<?php
+
+/**
+* Implements hook_schema()
+*/
+function pdf_forms_schema() {
+  $schema = array();
+
+  $schema['pdf_forms_type'] = array(
+    'fields' => array(
+      'bundle' => array(
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'label' => array(
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'description' => array(
+        'type' => 'text'
+      ),
+      'fid' => array(
+        'type' => 'int'
+      ),
+      'filename' => array(
+        'type' => 'text',
+      ),
+      'status' => array(
+        'type' => 'int'
+      ),
+    ),
+    'primary key' => array('bundle')
+  );
+
+  $schema['pdf_forms_field_mapping'] = array(
+    'fields' => array(
+      'bundle' => array(
+        'type' => 'varchar',
+        'length' => 255
+      ),
+      'machine_name' => array(
+        'type' => 'varchar',
+        'binary' => TRUE,
+        'length' => 255
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'binary' => TRUE,
+        'length' => 255,
+      ),
+      'prefix' => array(
+        'type' => 'text'
+      ),
+      'value' => array(
+        'type' => 'text'
+      ),
+      'suffix' => array(
+        'type' => 'text'
+      ),
+      'pdf_page' => array(
+        'type' => 'int'
+      ),
+      'top' => array(
+        'type' => 'int'
+      ),
+      'left' => array(
+        'type' => 'int'
+      ),
+      'height' => array(
+        'type' => 'int'
+      ),
+      'width' => array(
+        'type' => 'int'
+      ),
+    ),
+    'unique keys' => array(
+      'bundle_field' => array(
+        'bundle',
+        'machine_name'
+      )
+    )
+  );
+
+  $schema['pdf_forms_data'] = array(
+    'fields' => array(
+      'submission_id' => array(
+        'type' => 'serial'
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'bundle' => array(
+        'type' => 'varchar',
+        'length' => 255
+      ),
+      'fid' => array(
+        'type' => 'int'
+      )
+    ),
+    'primary key' => array('submission_id')
+  );
+
+  return $schema;
+}
+
+/**
+* Implements hook_enable.
+* - Ensure that we can access the pdftk executable, notify user if we cannot.
+* - Ensure that the default template upload directory exists, notify the user if we cannot create it.
+*/
+function pdf_forms_enable() {
+  $template_path = variable_get('pdf_forms_template_path', 'public://pdf_form_templates');
+  if(!file_prepare_directory($template_path)) {
+    drupal_set_message('Could not create %path for uploading PDF Form templates.', array('%path' => $template_path));
+  }
+}
+
+/**
+* Run a update hook to add the 'filename' field to the entity type table.
+*/
+function pdf_forms_update_7001() {
+  $spec = array(
+    'type' => 'text',
+  );
+  db_add_field( 'pdf_forms_type', 'filename', $spec);
+}
+
+/**
+* Implements hook_requirements
+*/
+function pdf_forms_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+
+  switch($phase) {
+    case 'install':
+    case 'runtime':
+      $pdftk_path = variable_get('pdf_forms_pdftk_path', 'pdftk');
+      $data = array();
+      $status = NULL;
+      exec($pdftk_path, $output, $status);
+      if (in_array($status, array(127, 126))) {
+        // Could not execute PDFTK.
+        $requirements['pdftk'] = array(
+          'title' => $t('PDFTK'),
+          'description' => $t('PDFTK is needed to scan PDF files, but could not be found.'),
+          'value' => $pdftk_path,
+          'severity' => REQUIREMENT_WARNING
+        );
+      }
+      else {
+        // PDFTK returned a good response.
+        $requirements['pdftk'] = array(
+          'title' => $t('PDFTK'),
+          'description' => $t('PDFTK is needed to scan PDF files.'),
+          'value' => $pdftk_path,
+          'severity' => REQUIREMENT_OK
+        );
+      }
+    break;
+  }
+
+  return $requirements;
+}

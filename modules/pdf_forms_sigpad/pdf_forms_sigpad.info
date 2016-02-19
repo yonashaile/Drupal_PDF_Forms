@@ -1,0 +1,8 @@
+name = PDF Forms SigPad
+description = Allows for signing generated PDF Forms.
+
+core = 7.x
+dependencies[] = pdf_forms
+dependencies[] = sigpad
+
+configure = admin/config/media/pdf_forms/sigpad
