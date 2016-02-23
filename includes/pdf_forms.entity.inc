@@ -196,6 +196,12 @@ function pdf_forms_type_edit($form, &$form_state, $pdf_form_type = NULL) {
             '#value' => $field['name']
           );
 
+          $field_type = array(
+            '#id' => 'fields-table-' . $id . '-field-type',
+            '#type' => 'value',
+            '#value' => $field['type'],
+          );
+
           $form['fields']['table'][$id] = array(
             'name' => &$field_name,
             'type' => &$field_type,
@@ -203,6 +209,7 @@ function pdf_forms_type_edit($form, &$form_state, $pdf_form_type = NULL) {
             'value' => &$value,
             'suffix' => &$suffix,
             'machine_name' => &$machine_name,
+            'field_type' => $field_type,
           );
 
           $form['fields']['table']['#rows'][] = array(
@@ -307,6 +314,8 @@ function pdf_forms_type_edit_submit($form, &$form_state) {
   }
 
   if ($new_bundle == TRUE ) {
+    // create fields.
+    pdf_forms_create_fields($pdf_form_type->bundle, $values['fields']['table']);
     menu_rebuild();
     drupal_set_message(t("New PDF Form Created"));
     $form_state['redirect'] = "admin/content/pdf_forms/{$pdf_form_type->bundle}/edit";
@@ -316,7 +325,54 @@ function pdf_forms_type_edit_submit($form, &$form_state) {
   }
 }
 
-
+/**
+ * Create field and instance to pdf_form bundle.
+ *
+ * @param string $bundle
+ *   Bundle name.
+ * @param array $field_info
+ *   Array of mapped field information.
+ *
+ * @throws \Exception
+ *   Exception.
+ *
+ * @throws \FieldException
+ *   Field exception.
+ *
+ * @todo: Need to handle mapping of pdftk field types to drupal core types.
+ */
+function pdf_forms_create_fields($bundle, $field_info) {
+  foreach ($field_info as $machine_name => $info) {
+    $field_name = 'field_' . preg_replace('@[^a-z0-9_]+@', '_', $machine_name);
+    // Make sure the field doesn't already exist.
+    if (!field_info_field($field_name)) {
+      // Create the field.
+      // Todo: also setup field widget and formatter settings based
+      // on the field type.
+      // Todo: Maybe it is better to create fields of all possible types and
+      // let pdf_form bundles reuse them.
+      $field = array(
+        'field_name' => $field_name,
+        'type' => strtolower($info['field_type']),
+      );
+      field_create_field($field);
+      // Create the instance.
+      $instance = array(
+        'field_name' => $field_name,
+        'entity_type' => 'pdf_form',
+        'bundle' => $bundle,
+        'label' => $machine_name,
+        'description' => '',
+        // Todo: how to handle required fields.
+        'required' => FALSE,
+      );
+      field_create_instance($instance);
+    }
+    else {
+      // Todo: handle field if it already exists.
+    }
+  }
+}
 
 /**
 * Implements the uri callback.
